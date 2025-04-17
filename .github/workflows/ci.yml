@@ -25,17 +25,18 @@ jobs:
           echo "JIRA_ISSUE=$ISSUE_ID" >> $GITHUB_OUTPUT
 
       # ✅ Khi PR được merged → Cập nhật Jira issue
-      - name: Update Jira Issue Status
-        if: github.event.pull_request.merged == true
+      - name: Login to Jira
+        uses: atlassian/gajira-login@v3
+        with:
+          site: ${{ secrets.JIRA_BASE_URL }}
+          email: ${{ secrets.JIRA_USER_EMAIL }}
+          apiToken: ${{ secrets.JIRA_API_TOKEN }}
+      
+      - name: Transition Jira Issue
         uses: atlassian/gajira-transition@v3
         with:
           issue: ${{ steps.extract_jira.outputs.JIRA_ISSUE }}
           transition: Done
-        env:
-          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
-          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
-          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
-
       # ✅ Gửi Slack khi issue được chuyển sang Done (PR đã merged)
       - name: Notify Slack
         if: github.event.pull_request.merged == true
