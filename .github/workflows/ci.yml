@@ -1,50 +1,45 @@
-name: CI + Jira + Slack Integration
+name: CI/CD with GitHub, Jira and Slack
 
 on:
   pull_request:
     types: [opened, synchronize, reopened, closed]
 
 jobs:
-  build:
+  build-and-test:
+    if: github.event.pull_request.merged != true
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - run: echo Hello world
 
-      - name: Run CI steps
-        if: github.event.action != 'closed'
-        run: echo "🔧 Run build/tests here..."
-
-      - name: Extract Jira issue ID
-        id: extract_jira
+  update-jira:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract Jira Issue Key
+        id: extract
         run: |
-          echo "🔍 Extracting JIRA ID..."
-          PR_TITLE="${{ github.event.pull_request.title }}"
-          ISSUE_ID=$(echo "$PR_TITLE" | grep -oE '[A-Z]+-[0-9]+' || true)
-          echo "JIRA_ISSUE=$ISSUE_ID" >> $GITHUB_OUTPUT
+          echo "JIRA_KEY=$(echo '${{ github.event.pull_request.title }}' | grep -o '[A-Z]\+-[0-9]\+')" >> $GITHUB_OUTPUT
 
-      # ✅ Khi PR được merged → Cập nhật Jira issue
       - name: Login to Jira
         uses: atlassian/gajira-login@v3
         env:
           JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
           JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
-      
-      - name: Transition Jira Issue
+
+      - name: Transition Jira issue to Done
         uses: atlassian/gajira-transition@v3
         with:
-          issue: ${{ steps.extract_jira.outputs.JIRA_ISSUE }}
+          issue: ${{ steps.extract.outputs.JIRA_KEY }}
           transition: Done
-      # ✅ Gửi Slack khi issue được chuyển sang Done (PR đã merged)
+          
       - name: Notify Slack
-        if: github.event.pull_request.merged == true
         uses: slackapi/slack-github-action@v1.24.0
         with:
           payload: |
             {
-              "text": "✅ Issue *${{ steps.extract_jira.outputs.JIRA_ISSUE }}* đã được đóng (PR merged bởi *${{ github.actor }}*)"
+              "text": ":white_check_mark: Jira issue *${{ steps.extract.outputs.JIRA_KEY }}* has been closed successfully!"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
