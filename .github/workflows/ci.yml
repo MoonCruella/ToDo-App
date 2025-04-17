@@ -27,7 +27,7 @@ jobs:
       # ✅ Khi PR được merged → Cập nhật Jira issue
       - name: Login to Jira
         uses: atlassian/gajira-login@v3
-        with:
+        env:
           site: ${{ secrets.JIRA_BASE_URL }}
           email: ${{ secrets.JIRA_USER_EMAIL }}
           apiToken: ${{ secrets.JIRA_API_TOKEN }}
